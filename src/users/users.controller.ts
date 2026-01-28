@@ -67,7 +67,7 @@ export class UsersController {
 
   @Delete('/signout')
   @HttpCode(HttpStatus.NO_CONTENT)
-  signout(@Session() session: any) {
+  signout(@Session() session: any): void {
     // clear user id from session
     session.userId = null;
   }
