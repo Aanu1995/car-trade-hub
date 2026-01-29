@@ -15,7 +15,7 @@ export class UsersService {
     private readonly repo: Repository<User>,
   ) {}
 
-  create(email: string, password: string): Promise<User> {
+  async create(email: string, password: string): Promise<User> {
     try {
       const user = this.repo.create({ email, password });
 
