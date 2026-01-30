@@ -35,12 +35,12 @@ describe('AuthService', () => {
   describe('create Account', () => {
     it('should create an account', async () => {
       const user = await authService.createAccount(
-        'olakunleaanu@gmail.com',
+        'example@gmail.com',
         password,
       );
 
       expect(user.password).not.toEqual(password);
-      expect(user.email).toEqual('olakunleaanu@gmail.com');
+      expect(user.email).toEqual('example@gmail.com');
 
       const [salt, hash] = user.password.split('.');
 
@@ -55,7 +55,7 @@ describe('AuthService', () => {
       };
 
       await expect(
-        authService.createAccount('olakunleaanu@gmail.com', password),
+        authService.createAccount('example@gmail.com', password),
       ).rejects.toThrow(ConflictException);
     });
   });
@@ -72,7 +72,7 @@ describe('AuthService', () => {
         return Promise.resolve(user);
       };
 
-      const user = await authService.signin('olakunleaanu@gmail.com', password);
+      const user = await authService.signin('example@gmail.com', password);
       expect(user).toBeDefined();
       expect(user.id).toBeDefined();
       expect(user.email).toBeDefined();
@@ -99,7 +99,7 @@ describe('AuthService', () => {
       };
 
       await expect(
-        authService.signin('olakunleaanu@gmail.com', 'wrongpassword'),
+        authService.signin('example@gmail.com', 'wrongpassword'),
       ).rejects.toThrow(UnauthorizedException);
     });
   });

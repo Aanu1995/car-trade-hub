@@ -12,7 +12,7 @@ describe('UsersController', () => {
 
   const fakeUsersService: Partial<UsersService> = {
     findOne: (id: number) => {
-      return Promise.resolve({ id, email: 'olakunleaanu@gmail.com' } as User);
+      return Promise.resolve({ id, email: 'example@gmail.com' } as User);
     },
     find: (email: string) => {
       return Promise.resolve([{ id: 1, email } as User]);
@@ -21,7 +21,7 @@ describe('UsersController', () => {
       return Promise.resolve({ id, ...attrs } as User);
     },
     remove: (id: number) => {
-      return Promise.resolve({ id, email: 'olakunleaanu@gmail.com' } as User);
+      return Promise.resolve({ id, email: 'example@gmail.com' } as User);
     },
   };
 
@@ -78,7 +78,7 @@ describe('UsersController', () => {
   it('should return user when signed in with correct credentials', async () => {
     const session = {} as any;
     const createUserDto = {
-      email: 'olakunleaanu@gmail.com',
+      email: 'example@gmail.com',
       password: 'password',
     } as CreateUserDto;
 
@@ -92,7 +92,7 @@ describe('UsersController', () => {
   it('should return user when account is created', async () => {
     const session = {} as any;
     const createUserDto = {
-      email: 'olakunleaanu@gmail.com',
+      email: 'example@gmail.com',
       password: 'password',
     } as CreateUserDto;
 

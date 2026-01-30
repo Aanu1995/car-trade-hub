@@ -34,7 +34,7 @@ export class UsersController {
   ) {}
   @Public()
   @Post('/signup')
-  async createUser(@Body() body: CreateUserDto): Promise<UserDto> {
+  async createUser(@Body() body: CreateUserDto): Promise<User> {
     try {
       const user = await this.authService.createAccount(
         body.email,
@@ -52,7 +52,7 @@ export class UsersController {
   async signin(
     @Body() body: CreateUserDto,
     @Session() session: any,
-  ): Promise<UserDto> {
+  ): Promise<User> {
     try {
       const user = await this.authService.signin(body.email, body.password);
 
@@ -73,7 +73,7 @@ export class UsersController {
   }
 
   @Get('/me')
-  async currentUser(@CurrentUser() currentUser: User): Promise<UserDto> {
+  async currentUser(@CurrentUser() currentUser: User): Promise<User> {
     try {
       const user = await this.usersService.findOne(currentUser.id);
 
@@ -88,7 +88,7 @@ export class UsersController {
   }
 
   @Get(':id')
-  async findUser(@Param('id', ParseIntPipe) id: number): Promise<UserDto> {
+  async findUser(@Param('id', ParseIntPipe) id: number): Promise<User> {
     try {
       const user = await this.usersService.findOne(id);
 
@@ -103,7 +103,7 @@ export class UsersController {
   }
 
   @Get()
-  async findAllUsers(@Query('email') email: string): Promise<UserDto[]> {
+  async findAllUsers(@Query('email') email: string): Promise<User[]> {
     return await this.usersService.find(email);
   }
 
@@ -121,7 +121,7 @@ export class UsersController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async DeleteUser(@Param('id', ParseIntPipe) id: number): Promise<UserDto> {
+  async DeleteUser(@Param('id', ParseIntPipe) id: number): Promise<User> {
     try {
       return await this.usersService.remove(id);
     } catch (error) {

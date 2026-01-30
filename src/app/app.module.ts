@@ -43,12 +43,11 @@ export class AppModule {
 
   // configure middleware
   configure(consumer: MiddlewareConsumer) {
-    // Setup Helmet for security headers
-    consumer.apply(helmet()).forRoutes('*');
-
-    // Setup cookie session
     consumer
       .apply(
+        // Setup Helmet for security headers
+        helmet(),
+        // Setup cookie session
         cookieSession({
           keys: [this.configService.get<string>('COOKIE_KEY')!],
           maxAge: 3 * 24 * 60 * 60 * 1000, // 3 days

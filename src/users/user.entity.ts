@@ -1,3 +1,4 @@
+import { Report } from 'src/reports/report.entity';
 import {
   AfterInsert,
   AfterRemove,
@@ -5,10 +6,16 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  OneToMany,
   PrimaryGeneratedColumn,
   Unique,
   UpdateDateColumn,
 } from 'typeorm';
+
+export enum UserRole {
+  USER = 'user',
+  ADMIN = 'admin',
+}
 
 @Entity()
 @Unique(['email'])
@@ -21,6 +28,12 @@ export class User {
 
   @Column()
   password: string;
+
+  @Column({ default: UserRole.USER })
+  role: string;
+
+  @OneToMany(() => Report, (report) => report.createdBy)
+  reports: Report[];
 
   @CreateDateColumn()
   createdAt: Date;
