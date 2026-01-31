@@ -1,6 +1,4 @@
 import { MiddlewareConsumer, Module, ValidationPipe } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { UsersModule } from 'src/users/users.module';
 import { ReportsModule } from 'src/reports/reports.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -30,12 +28,10 @@ import cookieSession from 'cookie-session';
     UsersModule,
     ReportsModule,
   ],
-  controllers: [AppController],
+  controllers: [],
   providers: [
     // Setup global validation pipe
     { provide: APP_PIPE, useValue: new ValidationPipe({ whitelist: true }) },
-
-    AppService,
   ],
 })
 export class AppModule {
