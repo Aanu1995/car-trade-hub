@@ -25,10 +25,10 @@ export class Report {
   @Column()
   year: number;
 
-  @Column()
+  @Column({ type: 'float' })
   latitude: number;
 
-  @Column()
+  @Column({ type: 'float' })
   longitude: number;
 
   @Column()
@@ -37,7 +37,7 @@ export class Report {
   @Column({ default: false })
   approved: boolean;
 
-  @ManyToOne(() => User, (user) => user.reports)
+  @ManyToOne(() => User, (user) => user.reports, { onDelete: 'CASCADE' })
   createdBy: User;
 
   @CreateDateColumn()

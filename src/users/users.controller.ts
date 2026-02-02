@@ -11,7 +11,7 @@ import {
   HttpCode,
   HttpStatus,
   Query,
-  Session,
+  UseGuards,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dtos/create-user.dto';
@@ -21,18 +21,20 @@ import { UserDto } from './dtos/user.dto';
 import { Timeout } from 'src/interceptors/timeout.interceptor';
 import { AuthService } from './auth.service';
 import { CurrentUser } from 'src/decorators/current-user.decorator';
-import { User } from './user.entity';
+import { User, UserWithJwt } from './user.entity';
 import { Public } from 'src/decorators/public.decorator';
+import { UserDtoWithJwtDto } from './dtos/jwt-dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('auth')
 @Timeout()
-@Serialize(UserDto)
 export class UsersController {
   constructor(
     private readonly usersService: UsersService,
     private readonly authService: AuthService,
   ) {}
   @Public()
+  @Serialize(UserDto)
   @Post('/signup')
   async createUser(@Body() body: CreateUserDto): Promise<User> {
     try {
@@ -48,30 +50,22 @@ export class UsersController {
   }
 
   @Public()
+  @Serialize(UserDtoWithJwtDto)
   @Post('/signin')
-  async signin(
-    @Body() body: CreateUserDto,
-    @Session() session: any,
-  ): Promise<User> {
+  signin(@Body() body: CreateUserDto): Promise<UserWithJwt> {
     try {
-      const user = await this.authService.signin(body.email, body.password);
-
-      // store user id in session
-      session.userId = user.id;
-
-      return user;
+      return this.authService.signin(body.email, body.password);
     } catch (error) {
       throw error;
     }
   }
 
+  @Serialize(UserDto)
   @Delete('/signout')
   @HttpCode(HttpStatus.NO_CONTENT)
-  signout(@Session() session: any): void {
-    // clear user id from session
-    session.userId = null;
-  }
+  signout(): void {}
 
+  @Serialize(UserDto)
   @Get('/me')
   async currentUser(@CurrentUser() currentUser: User): Promise<User> {
     try {
@@ -87,6 +81,7 @@ export class UsersController {
     }
   }
 
+  @Serialize(UserDto)
   @Get(':id')
   async findUser(@Param('id', ParseIntPipe) id: number): Promise<User> {
     try {
@@ -102,11 +97,13 @@ export class UsersController {
     }
   }
 
+  @Serialize(UserDto)
   @Get()
   async findAllUsers(@Query('email') email: string): Promise<User[]> {
     return await this.usersService.find(email);
   }
 
+  @Serialize(UserDto)
   @Patch(':id')
   async UpdateUser(
     @Param('id', ParseIntPipe) id: number,
@@ -121,9 +118,9 @@ export class UsersController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async DeleteUser(@Param('id', ParseIntPipe) id: number): Promise<User> {
+  async DeleteUser(@Param('id', ParseIntPipe) id: number): Promise<void> {
     try {
-      return await this.usersService.remove(id);
+      await this.usersService.remove(id);
     } catch (error) {
       throw error;
     }

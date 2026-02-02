@@ -4,23 +4,17 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { promisify } from 'util';
-import { randomBytes, scrypt as _scrypt } from 'crypto';
-import { User } from './user.entity';
-
-const scrypt = promisify(_scrypt);
-
-enum HashEncoding {
-  HEX = 'hex',
-  BASE64 = 'base64',
-  UTF8 = 'utf8',
-}
+import * as bcrypt from 'bcrypt';
+import { JwtService } from '@nestjs/jwt';
+import { User, UserWithJwt } from './user.entity';
+import { JwtDto, TokenType } from './dtos/jwt-dto';
 
 @Injectable()
 export class AuthService {
-  private readonly encoding = HashEncoding.HEX;
-
-  constructor(private readonly userService: UsersService) {}
+  constructor(
+    private readonly userService: UsersService,
+    private readonly jwtService: JwtService,
+  ) {}
 
   async createAccount(email: string, password: string): Promise<User> {
     // check if email is in use
@@ -31,21 +25,18 @@ export class AuthService {
     }
 
     // Generate the salt
-    const salt = randomBytes(8).toString(this.encoding);
+    const salt = await bcrypt.genSalt();
 
     // Hash the password and salt together
-    const hash = await this.hashPassword(password, salt);
-
-    // Join the hashed password and salt together
-    const result = salt + '.' + hash;
+    const hash = await bcrypt.hash(password, salt);
 
     // Save the user to the database
-    const user = await this.userService.create(email, result);
+    const user = await this.userService.create(email, hash);
 
     return user;
   }
 
-  async signin(email: string, password: string): Promise<User> {
+  async signin(email: string, password: string): Promise<UserWithJwt> {
     // check if email exists in the database
     const user = await this.userService.findOneByEmail(email);
 
@@ -53,24 +44,29 @@ export class AuthService {
       throw new UnauthorizedException('Incorrect email or password');
     }
 
-    const [salt, storedHash] = user.password.split('.');
+    // get stored hashed password
+    const hashedPassword = user.password;
 
-    const hash = await this.hashPassword(password, salt);
+    // compare the password
+    const isMatch = await bcrypt.compare(password, hashedPassword);
 
-    if (hash !== storedHash) {
+    if (!isMatch) {
       throw new UnauthorizedException('Incorrect email or password');
     }
 
-    return user;
-  }
+    const payload = { userId: user.id, role: user.role };
+    const accessToken = await this.jwtService.signAsync(payload);
 
-  private async hashPassword(
-    password: string,
-    salt: string,
-    keylen: number = 32,
-    encoding: HashEncoding = this.encoding,
-  ): Promise<string> {
-    const hash = (await scrypt(password, salt, keylen)) as Buffer;
-    return hash.toString(encoding);
+    const jwt: JwtDto = {
+      tokenType: TokenType.BEARER,
+      accessToken: accessToken,
+      accessTokenExpiresIn: this.jwtService.decode(accessToken)['exp'],
+      refreshToken: accessToken,
+      refreshTokenExpiresIn: this.jwtService.decode(accessToken)['exp'],
+    };
+
+    const signedUser = { ...user, jwt: jwt } as UserWithJwt;
+
+    return signedUser;
   }
 }

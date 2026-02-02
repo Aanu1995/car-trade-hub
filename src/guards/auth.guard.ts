@@ -40,8 +40,7 @@ export class AuthGuard implements CanActivate {
         throw new UnauthorizedException();
       }
 
-      request.currentUser = user;
-      request.session.userId = user.id; // Refresh session
+      request.user = user;
 
       return true;
     } catch (error) {

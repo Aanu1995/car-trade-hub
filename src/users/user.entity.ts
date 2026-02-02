@@ -1,16 +1,15 @@
 import { Report } from 'src/reports/report.entity';
 import {
   AfterInsert,
-  AfterRemove,
   AfterUpdate,
   Column,
   CreateDateColumn,
   Entity,
   OneToMany,
   PrimaryGeneratedColumn,
-  Unique,
   UpdateDateColumn,
 } from 'typeorm';
+import { JwtDto } from './dtos/jwt-dto';
 
 export enum UserRole {
   USER = 'user',
@@ -18,12 +17,11 @@ export enum UserRole {
 }
 
 @Entity()
-@Unique(['email'])
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ unique: true })
   email: string;
 
   @Column()
@@ -50,9 +48,8 @@ export class User {
   logUpdatedUser() {
     console.log(`Updated User with id: ${this.id}`);
   }
+}
 
-  @AfterRemove()
-  logRemovedUser() {
-    console.log(`Removed User with id: ${this.id}`);
-  }
+export class UserWithJwt extends User {
+  jwt: JwtDto;
 }

@@ -7,24 +7,49 @@ import { Report } from 'src/reports/report.entity';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_PIPE } from '@nestjs/core';
 import helmet from 'helmet';
-import cookieSession from 'cookie-session';
+import { PassportModule } from '@nestjs/passport';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
+    // Setup ConfigModule to read .env files
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: `.env.${process.env.NODE_ENV}`,
     }),
+
+    // Setup TypeOrmModule to connect to the database
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        type: 'sqlite',
+        type: 'postgres',
         database: configService.get<string>('DATABASE_NAME'),
+        username: configService.get<string>('DATABASE_USER'),
+        password: configService.get<string>('DATABASE_PASSWORD'),
+        host: configService.get<string>('DATABASE_HOST'),
+        port: configService.get<number>('DATABASE_PORT'),
         entities: [User, Report],
         synchronize: true,
       }),
     }),
+
+    // Setup PassportModule for authentication
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+
+    // Setup JwtModule for JWT authentication
+    JwtModule.registerAsync({
+      global: true,
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: {
+          expiresIn: configService.get('JWT_EXPIRES_IN', '15m'),
+        },
+      }),
+    }),
+
     UsersModule,
     ReportsModule,
   ],
@@ -35,19 +60,12 @@ import cookieSession from 'cookie-session';
   ],
 })
 export class AppModule {
-  constructor(private readonly configService: ConfigService) {}
-
   // configure middleware
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(
         // Setup Helmet for security headers
         helmet(),
-        // Setup cookie session
-        cookieSession({
-          keys: [this.configService.get<string>('COOKIE_KEY')!],
-          maxAge: 3 * 24 * 60 * 60 * 1000, // 3 days
-        }),
       )
       .forRoutes('*');
   }
