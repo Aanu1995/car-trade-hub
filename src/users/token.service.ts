@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -22,6 +22,8 @@ export interface RefreshTokenPayload {
 
 @Injectable()
 export class TokenService {
+  private readonly logger = new Logger(TokenService.name);
+
   constructor(
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepo: Repository<RefreshToken>,
@@ -33,6 +35,7 @@ export class TokenService {
    * Generate access token
    */
   generateAccessToken(user: User): Promise<string> {
+    this.logger.log(`Generating access token for user ID: ${user.id}`);
     const payload: TokenPayload = { userId: user.id, role: user.role };
 
     const options: JwtSignOptions = {
@@ -51,6 +54,7 @@ export class TokenService {
     deviceInfo?: string,
     ipAddress?: string,
   ): Promise<string> {
+    this.logger.log(`Generating refresh token for user ID: ${user.id}`);
     const tokenId = ulid();
 
     const payload: RefreshTokenPayload = { userId: user.id, tokenId };
@@ -81,6 +85,7 @@ export class TokenService {
     } as CreateRefreshTokenDto);
 
     await this.refreshTokenRepo.save(refreshTokenEntity);
+    this.logger.log(`Refresh token stored for user ID: ${user.id}`);
 
     return refreshToken;
   }

@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_PIPE } from '@nestjs/core';
 import helmet from 'helmet';
+import { configValidationSchema } from 'src/config.schema';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import helmet from 'helmet';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: `.env.${process.env.NODE_ENV}`,
+      validationSchema: configValidationSchema,
     }),
 
     // Setup TypeOrmModule to connect to the database
