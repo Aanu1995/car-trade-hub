@@ -5,15 +5,15 @@ import {
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import * as bcrypt from 'bcrypt';
-import { JwtService } from '@nestjs/jwt';
-import { User, UserWithJwt } from './user.entity';
-import { JwtDto, TokenType } from './dtos/jwt-dto';
+import { User, UserWithJwt, UserWithTokenInfo } from './entities/user.entity';
+import { JwtDto } from './dtos/jwt-dto';
+import { TokenService } from './token.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly userService: UsersService,
-    private readonly jwtService: JwtService,
+    private readonly tokenService: TokenService,
   ) {}
 
   async createAccount(email: string, password: string): Promise<User> {
@@ -36,7 +36,12 @@ export class AuthService {
     return user;
   }
 
-  async signin(email: string, password: string): Promise<UserWithJwt> {
+  async signin(
+    email: string,
+    password: string,
+    deviceInfo?: string,
+    ipAddress?: string,
+  ): Promise<UserWithJwt> {
     // check if email exists in the database
     const user = await this.userService.findOneByEmail(email);
 
@@ -54,19 +59,47 @@ export class AuthService {
       throw new UnauthorizedException('Incorrect email or password');
     }
 
-    const payload = { userId: user.id, role: user.role };
-    const accessToken = await this.jwtService.signAsync(payload);
-
-    const jwt: JwtDto = {
-      tokenType: TokenType.BEARER,
-      accessToken: accessToken,
-      accessTokenExpiresIn: this.jwtService.decode(accessToken)['exp'],
-      refreshToken: accessToken,
-      refreshTokenExpiresIn: this.jwtService.decode(accessToken)['exp'],
-    };
+    // Generate token pair (access + refresh)
+    const jwt: JwtDto = await this.tokenService.generateTokenPair(
+      user,
+      deviceInfo,
+      ipAddress,
+    );
 
     const signedUser = { ...user, jwt: jwt } as UserWithJwt;
 
     return signedUser;
+  }
+
+  /**
+   * Refresh access token using refresh token§
+   */
+  async refreshTokens(
+    userWithTokenId: UserWithTokenInfo,
+    refreshToken: string,
+    deviceInfo?: string,
+    ipAddress?: string,
+  ): Promise<JwtDto> {
+    return this.tokenService.refreshTokens(
+      userWithTokenId.id,
+      userWithTokenId.tokenId,
+      refreshToken,
+      deviceInfo,
+      ipAddress,
+    );
+  }
+
+  /**
+   * Logout user - revoke specific refresh token
+   */
+  async logout(tokenId: string, userId: number): Promise<void> {
+    await this.tokenService.revokeRefreshToken(tokenId, userId);
+  }
+
+  /**
+   * Logout from all devices - revoke all refresh tokens
+   */
+  async logoutAllDevices(userId: number): Promise<void> {
+    await this.tokenService.revokeAllUserTokens(userId);
   }
 }

@@ -24,7 +24,7 @@ class TimeoutInterceptor implements NestInterceptor {
   constructor(private readonly timeoutInMilliseconds: number) {}
 
   intercept(
-    context: ExecutionContext,
+    _context: ExecutionContext,
     next: CallHandler<any>,
   ): Observable<any> | Promise<Observable<any>> {
     return next.handle().pipe(

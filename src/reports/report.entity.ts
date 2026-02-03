@@ -6,9 +6,9 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { User } from '../users/user.entity';
+import { User } from '../users/entities/user.entity';
 
-@Entity()
+@Entity('reports')
 export class Report {
   @PrimaryGeneratedColumn()
   id: number;
@@ -36,6 +36,9 @@ export class Report {
 
   @Column({ default: false })
   approved: boolean;
+
+  @Column()
+  createdById: number;
 
   @ManyToOne(() => User, (user) => user.reports, { onDelete: 'CASCADE' })
   createdBy: User;

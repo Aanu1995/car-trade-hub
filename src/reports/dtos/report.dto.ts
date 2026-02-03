@@ -1,5 +1,4 @@
-import { Expose, Transform, Type } from 'class-transformer';
-import { UserDto } from 'src/users/dtos/user.dto';
+import { Expose } from 'class-transformer';
 
 export class ReportDto {
   @Expose()
@@ -30,8 +29,7 @@ export class ReportDto {
   approved: boolean;
 
   @Expose()
-  @Transform(({ obj }) => obj.createdBy?.id)
-  userId: number;
+  createdById: number;
 
   // @Expose()
   // @Type(() => UserDto)

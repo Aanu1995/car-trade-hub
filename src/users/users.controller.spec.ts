@@ -2,10 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { AuthService } from './auth.service';
-import { User } from './user.entity';
+import { User, UserWithJwt } from './entities/user.entity';
 import { NotFoundException } from '@nestjs/common';
 import { UpdateUserDto } from './dtos/update-user.dto';
 import { CreateUserDto } from './dtos/create-user.dto';
+import { Request } from 'express';
 
 describe('UsersController', () => {
   let controller: UsersController;
@@ -29,8 +30,13 @@ describe('UsersController', () => {
     createAccount: (email: string, password: string) => {
       return Promise.resolve({ id: 1, email, password } as User);
     },
-    signin: (email: string, password: string) => {
-      return Promise.resolve({ id: 1, email, password } as User);
+    signin: (
+      email: string,
+      password: string,
+      deviceInfo?: string,
+      ipAddress?: string,
+    ) => {
+      return Promise.resolve({ id: 1, email, password } as UserWithJwt);
     },
   };
 
@@ -76,21 +82,19 @@ describe('UsersController', () => {
   });
 
   it('should return user when signed in with correct credentials', async () => {
-    const session = {} as any;
+    const request = {} as Request;
     const createUserDto = {
       email: 'example@gmail.com',
       password: 'password',
     } as CreateUserDto;
 
-    const user = await controller.signin(createUserDto, session);
+    const user = await controller.signin(createUserDto, request, '');
 
     expect(user).toBeDefined();
     expect(user.email).toEqual(createUserDto.email);
-    expect(session.userId).toEqual(user.id);
   });
 
   it('should return user when account is created', async () => {
-    const session = {} as any;
     const createUserDto = {
       email: 'example@gmail.com',
       password: 'password',

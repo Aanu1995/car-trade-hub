@@ -12,6 +12,7 @@ import {
   HttpStatus,
   Query,
   UseGuards,
+  Ip,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dtos/create-user.dto';
@@ -20,11 +21,16 @@ import { Serialize } from 'src/interceptors/serialize.interceptor';
 import { UserDto } from './dtos/user.dto';
 import { Timeout } from 'src/interceptors/timeout.interceptor';
 import { AuthService } from './auth.service';
-import { CurrentUser } from 'src/decorators/current-user.decorator';
-import { User, UserWithJwt } from './user.entity';
+import {
+  CurrentUser,
+  UserWithTokenId,
+} from 'src/decorators/current-user.decorator';
+import { User, UserWithJwt, UserWithTokenInfo } from './entities/user.entity';
 import { Public } from 'src/decorators/public.decorator';
-import { UserDtoWithJwtDto } from './dtos/jwt-dto';
-import { AuthGuard } from '@nestjs/passport';
+import { JwtDto, UserDtoWithJwtDto } from './dtos/jwt-dto';
+import { RefreshTokenDto } from './dtos/refresh-token.dto';
+import { JwtRefreshGuard } from 'src/guards/jwt-refresh.guard';
+import { UserAgent } from 'src/decorators/user-agent.decorator';
 
 @Controller('auth')
 @Timeout()
@@ -52,18 +58,58 @@ export class UsersController {
   @Public()
   @Serialize(UserDtoWithJwtDto)
   @Post('/signin')
-  signin(@Body() body: CreateUserDto): Promise<UserWithJwt> {
+  signin(
+    @Body() body: CreateUserDto,
+    @UserAgent() deviceInfo: string,
+    @Ip() ipAddress: string,
+  ): Promise<UserWithJwt> {
     try {
-      return this.authService.signin(body.email, body.password);
+      return this.authService.signin(
+        body.email,
+        body.password,
+        deviceInfo,
+        ipAddress,
+      );
     } catch (error) {
       throw error;
     }
   }
 
-  @Serialize(UserDto)
+  @Public()
+  @UseGuards(JwtRefreshGuard)
+  @Post('/refresh')
+  async refreshTokens(
+    @UserWithTokenId() user: UserWithTokenInfo,
+    @UserAgent() deviceInfo: string,
+    @Body() body: RefreshTokenDto,
+    @Ip() ipAddress: string,
+  ): Promise<JwtDto> {
+    try {
+      return this.authService.refreshTokens(
+        user,
+        body.refreshToken,
+        deviceInfo,
+        ipAddress,
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
   @Delete('/signout')
   @HttpCode(HttpStatus.NO_CONTENT)
-  signout(): void {}
+  async signout(@CurrentUser() currentUser: User): Promise<void> {
+    // Note: For proper logout, we need the tokenId from the refresh token
+    // This endpoint logs out from all devices for simplicity
+    // For single device logout, the client should call /signout with the refresh token
+    await this.authService.logoutAllDevices(currentUser.id);
+  }
+
+  @Delete('/signout-all')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async signoutAllDevices(@CurrentUser() currentUser: User): Promise<void> {
+    await this.authService.logoutAllDevices(currentUser.id);
+  }
 
   @Serialize(UserDto)
   @Get('/me')

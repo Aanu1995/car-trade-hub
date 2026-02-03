@@ -13,7 +13,7 @@ import { Serialize } from 'src/interceptors/serialize.interceptor';
 import { ReportDto } from './dtos/report.dto';
 import { CreateReportDto } from './dtos/create-report.dto';
 import { CurrentUser } from 'src/decorators/current-user.decorator';
-import { User, UserRole } from 'src/users/user.entity';
+import { User, UserRole } from 'src/users/entities/user.entity';
 import { Report } from './report.entity';
 import { changeReportApprovalDto } from './dtos/change-report-approval.dto';
 import { Roles } from 'src/decorators/role.decorator';

@@ -5,7 +5,11 @@ import {
   NestInterceptor,
   UseInterceptors,
 } from '@nestjs/common';
-import { plainToInstance } from 'class-transformer';
+import {
+  instanceToInstance,
+  instanceToPlain,
+  plainToInstance,
+} from 'class-transformer';
 import type { ClassConstructor } from 'class-transformer';
 import { map, Observable } from 'rxjs';
 
@@ -17,7 +21,7 @@ export const Serialize = <T, V>(dto: ClassConstructor<V>) => {
 class SerializeInterceptor<T, V> implements NestInterceptor<T, V> {
   constructor(private readonly dto: ClassConstructor<V>) {}
 
-  intercept(context: ExecutionContext, next: CallHandler<T>): Observable<V> {
+  intercept(_context: ExecutionContext, next: CallHandler<T>): Observable<V> {
     return next.handle().pipe(
       map((data: T) => {
         return plainToInstance(this.dto, data, {

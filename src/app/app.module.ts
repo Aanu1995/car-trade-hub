@@ -2,13 +2,9 @@ import { MiddlewareConsumer, Module, ValidationPipe } from '@nestjs/common';
 import { UsersModule } from 'src/users/users.module';
 import { ReportsModule } from 'src/reports/reports.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from 'src/users/user.entity';
-import { Report } from 'src/reports/report.entity';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_PIPE } from '@nestjs/core';
 import helmet from 'helmet';
-import { PassportModule } from '@nestjs/passport';
-import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
@@ -29,24 +25,8 @@ import { JwtModule } from '@nestjs/jwt';
         password: configService.get<string>('DATABASE_PASSWORD'),
         host: configService.get<string>('DATABASE_HOST'),
         port: configService.get<number>('DATABASE_PORT'),
-        entities: [User, Report],
+        autoLoadEntities: true,
         synchronize: true,
-      }),
-    }),
-
-    // Setup PassportModule for authentication
-    PassportModule.register({ defaultStrategy: 'jwt' }),
-
-    // Setup JwtModule for JWT authentication
-    JwtModule.registerAsync({
-      global: true,
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET'),
-        signOptions: {
-          expiresIn: configService.get('JWT_EXPIRES_IN', '15m'),
-        },
       }),
     }),
 

@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Report } from './report.entity';
 import { Repository } from 'typeorm';
-import { User } from 'src/users/user.entity';
+import { User } from 'src/users/entities/user.entity';
 import { CreateReportDto } from './dtos/create-report.dto';
 
 @Injectable()
@@ -12,16 +12,13 @@ export class ReportsService {
   ) {}
 
   create(user: User, reportDto: CreateReportDto): Promise<Report> {
-    const report = this.repo.create(reportDto);
-    report.createdBy = user;
-
+    const report = this.repo.create({ ...reportDto, createdBy: user });
     return this.repo.save(report);
   }
 
   findByUserId(userid: number, limit: number = 10): Promise<Report[]> {
     return this.repo.find({
-      where: { createdBy: { id: userid } },
-      relations: { createdBy: true },
+      where: { createdById: userid },
       order: { createdOn: 'DESC' },
       take: limit,
     });

@@ -9,14 +9,14 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { JwtDto } from './dtos/jwt-dto';
+import { JwtDto } from '../dtos/jwt-dto';
 
 export enum UserRole {
   USER = 'user',
   ADMIN = 'admin',
 }
 
-@Entity()
+@Entity('users')
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
@@ -52,4 +52,8 @@ export class User {
 
 export class UserWithJwt extends User {
   jwt: JwtDto;
+}
+
+export class UserWithTokenInfo extends User {
+  tokenId: string;
 }
