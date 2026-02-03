@@ -22,7 +22,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
     });
   }
 
-  async validate(req: Request, payload: RefreshTokenPayload) {
+  async validate(payload: RefreshTokenPayload) {
     const { userId, tokenId } = payload;
 
     if (!userId || !tokenId) {

@@ -41,7 +41,7 @@ export class UsersController {
   ) {}
   @Public()
   @Serialize(UserDto)
-  @Post('/signup')
+  @Post('signup')
   async createUser(@Body() body: CreateUserDto): Promise<User> {
     try {
       const user = await this.authService.createAccount(
@@ -57,7 +57,7 @@ export class UsersController {
 
   @Public()
   @Serialize(UserDtoWithJwtDto)
-  @Post('/signin')
+  @Post('signin')
   signin(
     @Body() body: CreateUserDto,
     @UserAgent() deviceInfo: string,
@@ -77,7 +77,7 @@ export class UsersController {
 
   @Public()
   @UseGuards(JwtRefreshGuard)
-  @Post('/refresh')
+  @Post('refresh')
   async refreshTokens(
     @UserWithTokenId() user: UserWithTokenInfo,
     @UserAgent() deviceInfo: string,
@@ -96,7 +96,7 @@ export class UsersController {
     }
   }
 
-  @Delete('/signout')
+  @Delete('signout')
   @HttpCode(HttpStatus.NO_CONTENT)
   async signout(@CurrentUser() currentUser: User): Promise<void> {
     // Note: For proper logout, we need the tokenId from the refresh token
@@ -105,14 +105,14 @@ export class UsersController {
     await this.authService.logoutAllDevices(currentUser.id);
   }
 
-  @Delete('/signout-all')
+  @Delete('signout-all')
   @HttpCode(HttpStatus.NO_CONTENT)
   async signoutAllDevices(@CurrentUser() currentUser: User): Promise<void> {
     await this.authService.logoutAllDevices(currentUser.id);
   }
 
   @Serialize(UserDto)
-  @Get('/me')
+  @Get('me')
   async currentUser(@CurrentUser() currentUser: User): Promise<User> {
     try {
       const user = await this.usersService.findOne(currentUser.id);
