@@ -1,14 +1,13 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
-import { InjectRepository } from '@nestjs/typeorm';
-import { LessThan, Repository } from 'typeorm';
-import { RefreshToken } from './entities/refresh-token.entity';
+import { InjectRedis } from '@nestjs-modules/ioredis';
+import Redis from 'ioredis';
 import { User } from './entities/user.entity';
 import { JwtDto, TokenType } from './dtos/jwt-dto';
 import { ulid } from 'ulid';
 import * as bcrypt from 'bcrypt';
-import { CreateRefreshTokenDto } from './dtos/create-refresh-token.dto';
+import { UsersService } from './users.service';
 
 export interface TokenPayload {
   userId: number;
@@ -20,16 +19,47 @@ export interface RefreshTokenPayload {
   tokenId: string;
 }
 
+export interface StoredRefreshToken {
+  token: string;
+  userId: number;
+  deviceInfo?: string;
+  ipAddress?: string;
+  createdAt: string;
+}
+
+export interface SessionInfo {
+  id: string;
+  deviceInfo?: string;
+  ipAddress?: string;
+  createdAt: string;
+}
+
 @Injectable()
 export class TokenService {
   private readonly logger = new Logger(TokenService.name);
+  private readonly REFRESH_TOKEN_PREFIX = 'refresh_token';
+  private readonly USER_TOKENS_PREFIX = 'user_tokens';
 
   constructor(
-    @InjectRepository(RefreshToken)
-    private readonly refreshTokenRepo: Repository<RefreshToken>,
+    @InjectRedis() private readonly redis: Redis,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly usersService: UsersService,
   ) {}
+
+  /**
+   * Generate Redis key for a refresh token
+   */
+  private getRefreshTokenKey(userId: number, tokenId: string): string {
+    return `${this.REFRESH_TOKEN_PREFIX}:${userId}:${tokenId}`;
+  }
+
+  /**
+   * Generate Redis key for user's token set
+   */
+  private getUserTokenKey(userId: number): string {
+    return `${this.USER_TOKENS_PREFIX}:${userId}`;
+  }
 
   /**
    * Generate access token
@@ -38,16 +68,16 @@ export class TokenService {
     this.logger.log(`Generating access token for user ID: ${user.id}`);
     const payload: TokenPayload = { userId: user.id, role: user.role };
 
-    const options: JwtSignOptions = {
+    const options = {
       secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
       expiresIn: this.configService.getOrThrow('JWT_ACCESS_EXPIRES_IN'),
-    };
+    } as JwtSignOptions;
 
     return this.jwtService.signAsync(payload, options);
   }
 
   /**
-   * Generate refresh token and store it in the database
+   * Generate refresh token and store it in Redis
    */
   async generateRefreshToken(
     user: User,
@@ -59,33 +89,46 @@ export class TokenService {
 
     const payload: RefreshTokenPayload = { userId: user.id, tokenId };
 
-    const options: JwtSignOptions = {
+    const options = {
       secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
       expiresIn: this.configService.getOrThrow('JWT_REFRESH_EXPIRES_IN'),
-    };
+    } as JwtSignOptions;
 
     const refreshToken = await this.jwtService.signAsync(payload, options);
+    const decodedRefreshToken = this.jwtService.decode(refreshToken) as {
+      exp: number;
+    };
 
     // Hash the token before storing (for security)
     const hashedToken = await this.hashToken(refreshToken);
 
-    // Get expiration date from the JWT token
-    const { exp } = this.jwtService.decode(refreshToken) as { exp: number };
-    const expiresAt = new Date(exp * 1000);
+    // Calculate TTL in seconds
+    const ttlSeconds = decodedRefreshToken.exp - Math.floor(Date.now() / 1000);
 
-    // Store refresh token in database
-    const refreshTokenEntity = this.refreshTokenRepo.create({
-      id: tokenId,
+    // Store refresh token data in Redis
+    const tokenData: StoredRefreshToken = {
       token: hashedToken,
       userId: user.id,
-      user,
-      expiresAt,
       deviceInfo,
       ipAddress,
-    } as CreateRefreshTokenDto);
+      createdAt: new Date().toISOString(),
+    };
 
-    await this.refreshTokenRepo.save(refreshTokenEntity);
-    this.logger.log(`Refresh token stored for user ID: ${user.id}`);
+    const refreshTokenKey = this.getRefreshTokenKey(user.id, tokenId);
+    const userTokenKey = this.getUserTokenKey(user.id);
+
+    // Use pipeline for atomic operations
+    const pipeline = this.redis.pipeline();
+
+    // Store the token with TTL
+    pipeline.setex(refreshTokenKey, ttlSeconds, JSON.stringify(tokenData));
+
+    // Add token ID to user's token set (for listing/revoking all)
+    pipeline.sadd(userTokenKey, tokenId);
+
+    await pipeline.exec();
+
+    this.logger.log(`Refresh token stored in Redis for user ID: ${user.id}`);
 
     return refreshToken;
   }
@@ -130,24 +173,16 @@ export class TokenService {
     deviceInfo?: string,
     ipAddress?: string,
   ): Promise<JwtDto> {
-    // Find the refresh token in database
-    const storedToken = await this.refreshTokenRepo.findOne({
-      where: { id: tokenId, userId: userId },
-      relations: { user: true },
-    });
+    const refreshTokenKey = this.getRefreshTokenKey(userId, tokenId);
 
-    if (!storedToken) {
+    // Find the refresh token in Redis
+    const storedTokenData = await this.redis.get(refreshTokenKey);
+
+    if (!storedTokenData) {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    // Check if token is revoked
-    if (storedToken.isRevoked) {
-      // Potential token theft detected - revoke all tokens for this user
-      await this.revokeAllUserTokens(userId);
-      throw new UnauthorizedException(
-        'Refresh token has been revoked. Please login again.',
-      );
-    }
+    const storedToken: StoredRefreshToken = JSON.parse(storedTokenData);
 
     // Verify the token hash
     const isMatched = await bcrypt.compare(
@@ -156,58 +191,111 @@ export class TokenService {
     );
 
     if (!isMatched) {
-      throw new UnauthorizedException('Invalid refresh token');
+      // Potential token theft detected - revoke all tokens for this user
+      await this.revokeAllUserTokens(userId);
+      throw new UnauthorizedException(
+        'Invalid refresh token. All sessions have been revoked for security.',
+      );
     }
 
-    // Revoke the current refresh token (rotation)
-    storedToken.isRevoked = true;
-    await this.refreshTokenRepo.save(storedToken);
+    // Delete the current refresh token (rotation) - atomic operation
+    await this.revokeRefreshToken(tokenId, userId);
+
+    // Get user for generating new tokens
+    const user = await this.usersService.findOne(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
 
     // Generate new token pair
-    return this.generateTokenPair(storedToken.user, deviceInfo, ipAddress);
+    return this.generateTokenPair(user, deviceInfo, ipAddress);
   }
 
   /**
    * Revoke a specific refresh token (logout from one device)
    */
   async revokeRefreshToken(tokenId: string, userId: number): Promise<void> {
-    await this.refreshTokenRepo.update(
-      { id: tokenId, userId },
-      { isRevoked: true },
-    );
+    const refreshTokenKey = this.getRefreshTokenKey(userId, tokenId);
+    const userTokenKey = this.getUserTokenKey(userId);
+
+    const pipeline = this.redis.pipeline();
+    pipeline.del(refreshTokenKey);
+    pipeline.srem(userTokenKey, tokenId);
+    await pipeline.exec();
+
+    this.logger.log(`Refresh token ${tokenId} revoked for user ID: ${userId}`);
   }
 
   /**
    * Revoke all refresh tokens for a user (logout from all devices)
    */
   async revokeAllUserTokens(userId: number): Promise<void> {
-    await this.refreshTokenRepo.update(
-      { userId, isRevoked: false },
-      { isRevoked: true },
-    );
+    const userTokenKey = this.getUserTokenKey(userId);
+
+    // Get all token IDs for this user
+    const tokenIds = await this.redis.smembers(userTokenKey);
+
+    if (tokenIds.length === 0) {
+      return;
+    }
+
+    // Delete all tokens in a pipeline
+    const pipeline = this.redis.pipeline();
+
+    for (const tokenId of tokenIds) {
+      const refreshTokenKey = this.getRefreshTokenKey(userId, tokenId);
+      pipeline.del(refreshTokenKey);
+    }
+
+    // Clear the user's token set
+    pipeline.del(userTokenKey);
+
+    await pipeline.exec();
+
+    this.logger.log(`All refresh tokens revoked for user ID: ${userId}`);
   }
 
   /**
    * Get all active sessions for a user
    */
-  async getActiveSessions(userId: number): Promise<RefreshToken[]> {
-    return this.refreshTokenRepo.find({
-      select: ['id', 'deviceInfo', 'ipAddress', 'createdAt'],
-      where: {
-        userId,
-        isRevoked: false,
-        expiresAt: LessThan(new Date()),
-      },
-    });
-  }
+  async getActiveSessions(userId: number): Promise<SessionInfo[]> {
+    const userTokenKey = this.getUserTokenKey(userId);
 
-  /**
-   * Clean up expired tokens (should be run as a cron job)
-   */
-  async cleanupExpiredTokens(): Promise<void> {
-    await this.refreshTokenRepo.delete({
-      expiresAt: LessThan(new Date()),
-    });
+    // Get all token IDs for this user
+    const tokenIds = await this.redis.smembers(userTokenKey);
+
+    if (tokenIds.length === 0) {
+      return [];
+    }
+
+    // Get all token data
+    const pipeline = this.redis.pipeline();
+    for (const tokenId of tokenIds) {
+      pipeline.get(this.getRefreshTokenKey(userId, tokenId));
+    }
+
+    const results = await pipeline.exec();
+
+    const sessions: SessionInfo[] = [];
+
+    if (!results) {
+      return sessions;
+    }
+
+    for (let i = 0; i < results.length; i++) {
+      const [err, data] = results[i];
+      if (!err && data) {
+        const tokenData: StoredRefreshToken = JSON.parse(data as string);
+        sessions.push({
+          id: tokenIds[i],
+          deviceInfo: tokenData.deviceInfo,
+          ipAddress: tokenData.ipAddress,
+          createdAt: tokenData.createdAt,
+        });
+      }
+    }
+
+    return sessions;
   }
 
   /**
