@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -41,6 +42,7 @@ export class Report {
   createdById: number;
 
   @ManyToOne(() => User, (user) => user.reports, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'createdById' })
   createdBy: User;
 
   @CreateDateColumn()

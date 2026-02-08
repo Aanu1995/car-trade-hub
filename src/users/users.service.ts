@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
+import { AuthProvider, UserIdentity } from './entities/user-identity.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 
 @Injectable()
@@ -16,6 +17,8 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly repo: Repository<User>,
+    @InjectRepository(UserIdentity)
+    private readonly identityRepo: Repository<UserIdentity>,
   ) {}
 
   async create(email: string, password: string): Promise<User> {
@@ -31,6 +34,19 @@ export class UsersService {
     }
   }
 
+  async createOAuthUser(email: string): Promise<User> {
+    this.logger.log(`Creating new OAuth user record`);
+    try {
+      const user = this.repo.create({ email, password: null });
+      const savedUser = await this.repo.save(user);
+      this.logger.log(`OAuth user record created with ID: ${savedUser.id}`);
+      return savedUser;
+    } catch (error) {
+      this.logger.error(`Failed to create OAuth user record`, error);
+      throw new ConflictException('Email already in use');
+    }
+  }
+
   findOne(id: number): Promise<User | null> {
     if (!id) {
       throw new BadRequestException('User ID must be provided');
@@ -41,6 +57,38 @@ export class UsersService {
 
   findOneByEmail(email: string): Promise<User | null> {
     return this.repo.findOneBy({ email });
+  }
+
+  findIdentityByProviderUserId(
+    provider: AuthProvider,
+    providerUserId: string,
+  ): Promise<UserIdentity | null> {
+    return this.identityRepo.findOneBy({ provider, providerUserId });
+  }
+
+  async createIdentity(params: {
+    userId: number;
+    provider: AuthProvider;
+    providerUserId: string;
+    email: string;
+    emailVerified: boolean;
+  }): Promise<UserIdentity> {
+    this.logger.log(
+      `Creating new user identity for user ID: ${params.userId} with provider: ${params.provider}`,
+    );
+    const identity = this.identityRepo.create({
+      userId: params.userId,
+      provider: params.provider,
+      providerUserId: params.providerUserId,
+      email: params.email,
+      emailVerified: params.emailVerified,
+    });
+
+    const savedIdentity = await this.identityRepo.save(identity);
+    this.logger.log(
+      `User identity created with ID: ${savedIdentity.id} for user ID: ${params.userId}`,
+    );
+    return savedIdentity;
   }
 
   find(email: string): Promise<User[]> {

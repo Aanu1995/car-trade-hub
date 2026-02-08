@@ -13,6 +13,7 @@ import {
   Query,
   UseGuards,
   Ip,
+  Header,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dtos/create-user.dto';
@@ -23,6 +24,7 @@ import { Timeout } from 'src/interceptors/timeout.interceptor';
 import { AuthService } from './auth.service';
 import {
   CurrentUser,
+  OAuthProfile,
   UserWithTokenId,
 } from 'src/decorators/current-user.decorator';
 import { User, UserWithJwt, UserWithTokenInfo } from './entities/user.entity';
@@ -31,6 +33,10 @@ import { JwtDto, UserDtoWithJwtDto } from './dtos/jwt-dto';
 import { RefreshTokenDto } from './dtos/refresh-token.dto';
 import { JwtRefreshGuard } from 'src/guards/jwt-refresh.guard';
 import { UserAgent } from 'src/decorators/user-agent.decorator';
+import type { Profile } from 'passport-google-oauth20';
+import { GoogleAuthGuard } from 'src/guards/google-auth.guard';
+import { authLoginPageHtml } from './views/auth-login-page';
+import { renderAuthHomePage } from './views/auth-home-page';
 
 @Controller('auth')
 @Timeout()
@@ -43,16 +49,7 @@ export class UsersController {
   @Serialize(UserDto)
   @Post('signup')
   async createUser(@Body() body: CreateUserDto): Promise<User> {
-    try {
-      const user = await this.authService.createAccount(
-        body.email,
-        body.password,
-      );
-
-      return user;
-    } catch (error) {
-      throw error;
-    }
+    return await this.authService.createAccount(body.email, body.password);
   }
 
   @Public()
@@ -63,16 +60,44 @@ export class UsersController {
     @UserAgent() deviceInfo: string,
     @Ip() ipAddress: string,
   ): Promise<UserWithJwt> {
-    try {
-      return this.authService.signin(
-        body.email,
-        body.password,
-        deviceInfo,
-        ipAddress,
-      );
-    } catch (error) {
-      throw error;
-    }
+    return this.authService.signin(
+      body.email,
+      body.password,
+      deviceInfo,
+      ipAddress,
+    );
+  }
+
+  @Public()
+  @Header('Content-Type', 'text/html')
+  @Get('')
+  authentication(): string {
+    return authLoginPageHtml;
+  }
+
+  @Public()
+  @UseGuards(GoogleAuthGuard)
+  @Get('google')
+  googleAuth(): void {
+    return;
+  }
+
+  @Public()
+  @UseGuards(GoogleAuthGuard)
+  @Header('Content-Type', 'text/html')
+  @Get('google/callback')
+  async googleAuthCallback(
+    @OAuthProfile() profile: Profile,
+    @UserAgent() deviceInfo: string,
+    @Ip() ipAddress: string,
+  ): Promise<string> {
+    const signedUser = await this.authService.signinWithGoogle(
+      profile,
+      deviceInfo,
+      ipAddress,
+    );
+    const { password, role, ...safeUser } = signedUser;
+    return renderAuthHomePage(safeUser);
   }
 
   @Public()
@@ -84,16 +109,12 @@ export class UsersController {
     @Body() body: RefreshTokenDto,
     @Ip() ipAddress: string,
   ): Promise<JwtDto> {
-    try {
-      return this.authService.refreshTokens(
-        user,
-        body.refreshToken,
-        deviceInfo,
-        ipAddress,
-      );
-    } catch (error) {
-      throw error;
-    }
+    return this.authService.refreshTokens(
+      user,
+      body.refreshToken,
+      deviceInfo,
+      ipAddress,
+    );
   }
 
   @Delete('signout')
@@ -114,33 +135,25 @@ export class UsersController {
   @Serialize(UserDto)
   @Get('me')
   async currentUser(@CurrentUser() currentUser: User): Promise<User> {
-    try {
-      const user = await this.usersService.findOne(currentUser.id);
+    const user = await this.usersService.findOne(currentUser.id);
 
-      if (!user) {
-        throw new NotFoundException(`User with id ${currentUser.id} not found`);
-      }
-
-      return user;
-    } catch (error) {
-      throw error;
+    if (!user) {
+      throw new NotFoundException(`User with id ${currentUser.id} not found`);
     }
+
+    return user;
   }
 
   @Serialize(UserDto)
   @Get(':id')
   async findUser(@Param('id', ParseIntPipe) id: number): Promise<User> {
-    try {
-      const user = await this.usersService.findOne(id);
+    const user = await this.usersService.findOne(id);
 
-      if (!user) {
-        throw new NotFoundException(`User with id ${id} not found`);
-      }
-
-      return user;
-    } catch (error) {
-      throw error;
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
     }
+
+    return user;
   }
 
   @Serialize(UserDto)
@@ -155,20 +168,12 @@ export class UsersController {
     @Param('id', ParseIntPipe) id: number,
     @Body() body: UpdateUserDto,
   ): Promise<UserDto> {
-    try {
-      return await this.usersService.update(id, body);
-    } catch (error) {
-      throw error;
-    }
+    return await this.usersService.update(id, body);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async DeleteUser(@Param('id', ParseIntPipe) id: number): Promise<void> {
-    try {
-      await this.usersService.remove(id);
-    } catch (error) {
-      throw error;
-    }
+    await this.usersService.remove(id);
   }
 }

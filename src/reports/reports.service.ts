@@ -15,7 +15,7 @@ export class ReportsService {
 
   async create(user: User, reportDto: CreateReportDto): Promise<Report> {
     this.logger.log(`Creating report for user ID: ${user.id}`);
-    const report = this.repo.create({ ...reportDto, createdBy: user });
+    const report = this.repo.create({ ...reportDto, createdById: user.id });
     const savedReport = await this.repo.save(report);
 
     this.logger.log(

@@ -10,6 +10,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { JwtDto } from '../dtos/jwt-dto';
+import { UserIdentity } from './user-identity.entity';
 
 export enum UserRole {
   USER = 'user',
@@ -24,11 +25,14 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column()
-  password: string;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  password: string | null;
 
   @Column({ default: UserRole.USER })
   role: string;
+
+  @OneToMany(() => UserIdentity, (identity) => identity.user)
+  identities: UserIdentity[];
 
   @OneToMany(() => Report, (report) => report.createdBy)
   reports: Report[];
@@ -38,16 +42,6 @@ export class User {
 
   @UpdateDateColumn()
   updatedAt: Date;
-
-  @AfterInsert()
-  logInsertUser() {
-    console.log(`Inserted User with id: ${this.id}`);
-  }
-
-  @AfterUpdate()
-  logUpdatedUser() {
-    console.log(`Updated User with id: ${this.id}`);
-  }
 }
 
 export class UserWithJwt extends User {

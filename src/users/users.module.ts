@@ -3,6 +3,7 @@ import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
+import { UserIdentity } from './entities/user-identity.entity';
 import { AuthService } from './auth.service';
 import { APP_GUARD } from '@nestjs/core';
 import { RoleGuard } from 'src/guards/role.guard';
@@ -13,10 +14,11 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TokenService } from './token.service';
+import { GoogleStrategy } from './strategies/google.strategy';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, UserIdentity]),
 
     // Setup PassportModule for authentication
     PassportModule,
@@ -40,6 +42,7 @@ import { TokenService } from './token.service';
     TokenService,
     JwtStrategy,
     JwtRefreshStrategy,
+    GoogleStrategy,
     {
       provide: APP_GUARD,
       useClass: JwtGuard,
