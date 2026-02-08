@@ -55,8 +55,14 @@ export class UsersService {
     return this.repo.findOneBy({ id });
   }
 
-  findOneByEmail(email: string): Promise<User | null> {
-    return this.repo.findOneBy({ email });
+  findOneByEmail(
+    email: string,
+    options?: { withIdentities?: boolean },
+  ): Promise<User | null> {
+    return this.repo.findOne({
+      where: { email },
+      relations: { identities: options?.withIdentities ?? false },
+    });
   }
 
   findIdentityByProviderUserId(
@@ -99,7 +105,7 @@ export class UsersService {
     this.logger.log(`Updating user ID: ${id}`);
     const user = await this.findOne(id);
     if (!user) {
-      this.logger.warn(`Update failed - user not found with ID: ${id}`);
+      this.logger.error(`Update failed - user not found with ID: ${id}`);
       throw new NotFoundException(`User with id ${id} not found`);
     }
 
@@ -113,7 +119,7 @@ export class UsersService {
     this.logger.log(`Removing user ID: ${id}`);
     const user = await this.findOne(id);
     if (!user) {
-      this.logger.warn(`Remove failed - user not found with ID: ${id}`);
+      this.logger.error(`Remove failed - user not found with ID: ${id}`);
       throw new NotFoundException(`User with id ${id} not found`);
     }
 

@@ -2,6 +2,7 @@ import {
   ConflictException,
   Injectable,
   Logger,
+  InternalServerErrorException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
@@ -25,35 +26,59 @@ export class AuthService {
     const maskedEmail = this.maskEmail(email);
     this.logger.log(`Attempting to create account for ${maskedEmail}`);
 
-    // check if email is in use
-    const existingUser = await this.userService.findOneByEmail(email);
+    // If a user with the email already exists,
+    let existingUser = await this.userService.findOneByEmail(email, {
+      withIdentities: true,
+    });
 
     if (existingUser) {
-      this.logger.warn(
-        `Account creation failed - email already in use: ${maskedEmail}`,
-      );
-      throw new ConflictException('Email already in use');
+      // If the existing user does not have identities this is an unexpected state
+      if (!existingUser.identities || existingUser.identities.length === 0) {
+        throw new InternalServerErrorException('User identities not available');
+      }
+
+      // Check if the existing user has a local identity (i.e., password-based login)
+      const localIdentity = existingUser.identities.find((identity) => {
+        return identity.provider === AuthProvider.LOCAL;
+      });
+
+      // If a local identity already exists, then another account with the same email
+      if (localIdentity) {
+        this.logger.error(
+          `Account creation failed - email already in use: ${maskedEmail}`,
+        );
+        throw new ConflictException('Email already in use');
+      }
+
+      // Allow password setup for users created via social sign-in
+      const salt = await bcrypt.genSalt();
+      const hash = await bcrypt.hash(password, salt);
+
+      existingUser = await this.userService.update(existingUser.id, {
+        password: hash,
+      });
+    } else {
+      // No user exists with this email, create a new user record
+      const salt = await bcrypt.genSalt();
+      const hash = await bcrypt.hash(password, salt);
+
+      // Save the user to the database
+      existingUser = await this.userService.create(email, hash);
     }
 
-    // Generate the salt
-    const salt = await bcrypt.genSalt();
-
-    // Hash the password and salt together
-    const hash = await bcrypt.hash(password, salt);
-
-    // Save the user to the database
-    const user = await this.userService.create(email, hash);
-
+    // Create a local identity for the user if it doesn't exist
     await this.userService.createIdentity({
-      userId: user.id,
+      userId: existingUser.id,
       provider: AuthProvider.LOCAL,
-      providerUserId: user.id.toString(),
-      email: user.email,
+      providerUserId: existingUser.id.toString(),
+      email: existingUser.email,
       emailVerified: true,
     });
 
-    this.logger.log(`Account created successfully for user ID: ${user.id}`);
-    return user;
+    this.logger.log(
+      `Account created successfully for user ID: ${existingUser.id}`,
+    );
+    return existingUser;
   }
 
   async signin(
@@ -71,7 +96,7 @@ export class AuthService {
     const user = await this.userService.findOneByEmail(email);
 
     if (!user) {
-      this.logger.warn(`Sign-in failed - user not found: ${maskedEmail}`);
+      this.logger.error(`Sign-in failed - user not found: ${maskedEmail}`);
       throw new UnauthorizedException('Incorrect email or password');
     }
 
@@ -79,7 +104,7 @@ export class AuthService {
     const hashedPassword = user.password;
 
     if (!hashedPassword) {
-      this.logger.warn(
+      this.logger.error(
         `Sign-in failed - password login not enabled for user ID: ${user.id}`,
       );
       throw new UnauthorizedException('Incorrect email or password');
@@ -89,7 +114,7 @@ export class AuthService {
     const isMatch = await bcrypt.compare(password, hashedPassword);
 
     if (!isMatch) {
-      this.logger.warn(
+      this.logger.error(
         `Sign-in failed - invalid password for user ID: ${user.id}`,
       );
       throw new UnauthorizedException('Incorrect email or password');
@@ -114,7 +139,7 @@ export class AuthService {
     });
 
     if (!verifiedEmailEntry?.value) {
-      this.logger.warn(`Google sign-in failed - no verified email in profile`);
+      this.logger.error(`Google sign-in failed - no verified email in profile`);
       throw new UnauthorizedException('Google account has no verified email');
     }
 
@@ -155,6 +180,9 @@ export class AuthService {
     }
 
     if (!user) {
+      this.logger.error(
+        `Google sign-in failed - user not found for Google ID: ${googleId}`,
+      );
       throw new UnauthorizedException('User not found');
     }
 
