@@ -26,7 +26,7 @@ export class UsersService {
       this.logger.log(`User record created with ID: ${savedUser.id}`);
       return savedUser;
     } catch (error) {
-      this.logger.error(`Failed to create user record`, error.stack);
+      this.logger.error(`Failed to create user record`, error);
       throw new ConflictException('Email already in use');
     }
   }

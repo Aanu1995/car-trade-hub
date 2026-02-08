@@ -29,7 +29,7 @@ import { RedisModule } from '@nestjs-modules/ioredis';
         host: configService.get<string>('DATABASE_HOST'),
         port: configService.get<number>('DATABASE_PORT'),
         autoLoadEntities: true,
-        synchronize: true,
+        synchronize: false,
       }),
     }),
 
