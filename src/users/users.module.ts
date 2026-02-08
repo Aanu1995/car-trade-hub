@@ -53,12 +53,6 @@ import { GoogleStrategy } from './strategies/google.strategy';
     },
   ],
   controllers: [UsersController],
-  exports: [
-    UsersService,
-    TokenService,
-    JwtStrategy,
-    JwtRefreshStrategy,
-    PassportModule,
-  ],
+  exports: [UsersService, TokenService, JwtStrategy, PassportModule],
 })
 export class UsersModule {}

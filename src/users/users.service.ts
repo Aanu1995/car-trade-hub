@@ -27,6 +27,7 @@ export class UsersService {
       const user = this.repo.create({ email, password });
       const savedUser = await this.repo.save(user);
       this.logger.log(`User record created with ID: ${savedUser.id}`);
+
       return savedUser;
     } catch (error) {
       this.logger.error(`Failed to create user record`, error);
@@ -40,6 +41,7 @@ export class UsersService {
       const user = this.repo.create({ email, password: null });
       const savedUser = await this.repo.save(user);
       this.logger.log(`OAuth user record created with ID: ${savedUser.id}`);
+
       return savedUser;
     } catch (error) {
       this.logger.error(`Failed to create OAuth user record`, error);
@@ -94,6 +96,7 @@ export class UsersService {
     this.logger.log(
       `User identity created with ID: ${savedIdentity.id} for user ID: ${params.userId}`,
     );
+
     return savedIdentity;
   }
 
@@ -125,6 +128,7 @@ export class UsersService {
 
     const removedUser = await this.repo.remove(user);
     this.logger.log(`User ID: ${id} removed successfully`);
+
     return removedUser;
   }
 }

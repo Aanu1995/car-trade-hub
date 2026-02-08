@@ -45,6 +45,14 @@ export class UsersController {
     private readonly usersService: UsersService,
     private readonly authService: AuthService,
   ) {}
+
+  @Public()
+  @Header('Content-Type', 'text/html')
+  @Get('')
+  authentication(): string {
+    return authLoginPageHtml;
+  }
+
   @Public()
   @Serialize(UserDto)
   @Post('signup')
@@ -66,13 +74,6 @@ export class UsersController {
       deviceInfo,
       ipAddress,
     );
-  }
-
-  @Public()
-  @Header('Content-Type', 'text/html')
-  @Get('')
-  authentication(): string {
-    return authLoginPageHtml;
   }
 
   @Public()
@@ -117,21 +118,6 @@ export class UsersController {
     );
   }
 
-  @Delete('signout')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async signout(@CurrentUser() currentUser: User): Promise<void> {
-    // Note: For proper logout, we need the tokenId from the refresh token
-    // This endpoint logs out from all devices for simplicity
-    // For single device logout, the client should call /signout with the refresh token
-    await this.authService.logoutAllDevices(currentUser.id);
-  }
-
-  @Delete('signout-all')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async signoutAllDevices(@CurrentUser() currentUser: User): Promise<void> {
-    await this.authService.logoutAllDevices(currentUser.id);
-  }
-
   @Serialize(UserDto)
   @Get('me')
   async currentUser(@CurrentUser() currentUser: User): Promise<User> {
@@ -142,6 +128,12 @@ export class UsersController {
     }
 
     return user;
+  }
+
+  @Serialize(UserDto)
+  @Get()
+  async findAllUsers(@Query('email') email: string): Promise<User[]> {
+    return await this.usersService.find(email);
   }
 
   @Serialize(UserDto)
@@ -157,12 +149,6 @@ export class UsersController {
   }
 
   @Serialize(UserDto)
-  @Get()
-  async findAllUsers(@Query('email') email: string): Promise<User[]> {
-    return await this.usersService.find(email);
-  }
-
-  @Serialize(UserDto)
   @Patch(':id')
   async UpdateUser(
     @Param('id', ParseIntPipe) id: number,
@@ -175,5 +161,20 @@ export class UsersController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async DeleteUser(@Param('id', ParseIntPipe) id: number): Promise<void> {
     await this.usersService.remove(id);
+  }
+
+  @Delete('signout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async signout(@CurrentUser() currentUser: User): Promise<void> {
+    // Note: For proper logout, we need the tokenId from the refresh token
+    // This endpoint logs out from all devices for simplicity
+    // For single device logout, the client should call /signout with the refresh token
+    await this.authService.logoutAllDevices(currentUser.id);
+  }
+
+  @Delete('signout-all')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async signoutAllDevices(@CurrentUser() currentUser: User): Promise<void> {
+    await this.authService.logoutAllDevices(currentUser.id);
   }
 }
