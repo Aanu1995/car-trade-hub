@@ -10,7 +10,8 @@ import * as bcrypt from 'bcrypt';
 import { User, UserWithJwt, UserWithTokenInfo } from './entities/user.entity';
 import { JwtDto } from './dtos/jwt-dto';
 import { TokenService } from './token.service';
-import { Profile } from 'passport-google-oauth20';
+import { Profile as GoogleProfile } from 'passport-google-oauth20';
+import { Profile as GithubProfile } from 'passport-github2';
 import { AuthProvider } from './entities/user-identity.entity';
 
 @Injectable()
@@ -127,7 +128,7 @@ export class AuthService {
   }
 
   async signinWithGoogle(
-    profile: Profile,
+    profile: GoogleProfile,
     deviceInfo?: string,
     ipAddress?: string,
   ): Promise<UserWithJwt> {
@@ -189,6 +190,66 @@ export class AuthService {
     const signedUser = await this.issueJwtForUser(user, deviceInfo, ipAddress);
 
     this.logger.log(`Google sign-in successful for user ID: ${user.id}`);
+    return signedUser;
+  }
+
+  async signinWithGithub(
+    profile: GithubProfile,
+    deviceInfo?: string,
+    ipAddress?: string,
+  ): Promise<UserWithJwt> {
+    const githubId = profile.id;
+
+    const emailEntry = profile.emails?.find((email) => email.value);
+
+    if (!emailEntry?.value) {
+      this.logger.error('GitHub sign-in failed - no email in profile');
+      throw new UnauthorizedException('GitHub account has no email');
+    }
+
+    const email = emailEntry.value.toLowerCase();
+    const maskedEmail = this.maskEmail(email);
+
+    this.logger.log(
+      `GitHub sign-in attempt for ${maskedEmail} from IP: ${ipAddress || 'unknown'}`,
+    );
+
+    const existingIdentity =
+      await this.userService.findIdentityByProviderUserId(
+        AuthProvider.GITHUB,
+        githubId,
+      );
+
+    let user: User | null = null;
+
+    if (existingIdentity) {
+      user = await this.userService.findOne(existingIdentity.userId);
+    } else {
+      user = await this.userService.findOneByEmail(email);
+
+      if (!user) {
+        user = await this.userService.createOAuthUser(email);
+      }
+
+      await this.userService.createIdentity({
+        userId: user.id,
+        provider: AuthProvider.GITHUB,
+        providerUserId: githubId,
+        email,
+        emailVerified: true,
+      });
+    }
+
+    if (!user) {
+      this.logger.error(
+        `GitHub sign-in failed - user not found for GitHub ID: ${githubId}`,
+      );
+      throw new UnauthorizedException('User not found');
+    }
+
+    const signedUser = await this.issueJwtForUser(user, deviceInfo, ipAddress);
+
+    this.logger.log(`GitHub sign-in successful for user ID: ${user.id}`);
     return signedUser;
   }
 

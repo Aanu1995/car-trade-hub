@@ -21,6 +21,11 @@ export const configValidationSchema = Joi.object({
   GOOGLE_CLIENT_SECRET: Joi.string().required(),
   GOOGLE_CALLBACK_URL: Joi.string().required(),
 
+  // GitHub OAuth configuration
+  GITHUB_CLIENT_ID: Joi.string().required(),
+  GITHUB_CLIENT_SECRET: Joi.string().required(),
+  GITHUB_CALLBACK_URL: Joi.string().required(),
+
   // Redis configuration
   REDIS_URL: Joi.string().required(),
 });

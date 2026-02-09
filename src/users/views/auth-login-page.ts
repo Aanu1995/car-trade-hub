@@ -42,7 +42,8 @@ export const authLoginPageHtml = `<!DOCTYPE html>
         color: #6b7280;
         font-size: 14px;
       }
-      .google-button {
+      .google-button,
+      .github-button {
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -57,9 +58,13 @@ export const authLoginPageHtml = `<!DOCTYPE html>
         text-decoration: none;
         transition: background 0.2s ease, box-shadow 0.2s ease;
       }
-      .google-button:hover {
+      .google-button:hover,
+      .github-button:hover {
         background: #f9fafb;
         box-shadow: 0 6px 16px rgba(16, 24, 40, 0.08);
+      }
+      .github-button {
+        margin-top: 12px;
       }
       .google-icon {
         width: 20px;
@@ -97,6 +102,15 @@ export const authLoginPageHtml = `<!DOCTYPE html>
           />
         </svg>
         Continue with Google
+      </a>
+      <a class="github-button" href="/auth/github">
+        <svg class="google-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            fill="#111827"
+            d="M12 2.2c-5.5 0-10 4.5-10 10 0 4.4 2.9 8.1 6.9 9.4.5.1.7-.2.7-.5v-1.9c-2.8.6-3.4-1.2-3.4-1.2-.5-1.1-1.2-1.4-1.2-1.4-1-.7.1-.7.1-.7 1.1.1 1.7 1.1 1.7 1.1 1 .1.8-1.1 1.4-1.5-2.2-.2-4.5-1.1-4.5-5 0-1.1.4-2 1.1-2.7-.1-.3-.5-1.4.1-2.9 0 0 .9-.3 2.9 1.1.8-.2 1.7-.3 2.6-.3.9 0 1.8.1 2.6.3 2-1.4 2.9-1.1 2.9-1.1.6 1.5.2 2.6.1 2.9.7.7 1.1 1.6 1.1 2.7 0 3.9-2.3 4.8-4.5 5 .4.3.7 1 .7 2.1v3.1c0 .3.2.6.7.5 4-1.3 6.9-5 6.9-9.4 0-5.5-4.5-10-10-10z"
+          />
+        </svg>
+        Continue with GitHub
       </a>
       <div class="footer">By continuing, you agree to our terms.</div>
     </div>

@@ -33,8 +33,10 @@ import { JwtDto, UserDtoWithJwtDto } from './dtos/jwt-dto';
 import { RefreshTokenDto } from './dtos/refresh-token.dto';
 import { JwtRefreshGuard } from 'src/guards/jwt-refresh.guard';
 import { UserAgent } from 'src/decorators/user-agent.decorator';
-import type { Profile } from 'passport-google-oauth20';
+import type { Profile as GoogleProfile } from 'passport-google-oauth20';
+import type { Profile as GithubProfile } from 'passport-github2';
 import { GoogleAuthGuard } from 'src/guards/google-auth.guard';
+import { GithubAuthGuard } from 'src/guards/github-auth.guard';
 import { authLoginPageHtml } from './views/auth-login-page';
 import { renderAuthHomePage } from './views/auth-home-page';
 
@@ -88,7 +90,7 @@ export class UsersController {
   @Header('Content-Type', 'text/html')
   @Get('google/callback')
   async googleAuthCallback(
-    @OAuthProfile() profile: Profile,
+    @OAuthProfile() profile: GoogleProfile,
     @UserAgent() deviceInfo: string,
     @Ip() ipAddress: string,
   ): Promise<string> {
@@ -98,7 +100,32 @@ export class UsersController {
       ipAddress,
     );
     const { password, role, ...safeUser } = signedUser;
-    return renderAuthHomePage(safeUser);
+    return renderAuthHomePage(safeUser, 'Google');
+  }
+
+  @Public()
+  @UseGuards(GithubAuthGuard)
+  @Get('github')
+  githubAuth(): void {
+    return;
+  }
+
+  @Public()
+  @UseGuards(GithubAuthGuard)
+  @Header('Content-Type', 'text/html')
+  @Get('github/callback')
+  async githubAuthCallback(
+    @OAuthProfile() profile: GithubProfile,
+    @UserAgent() deviceInfo: string,
+    @Ip() ipAddress: string,
+  ): Promise<string> {
+    const signedUser = await this.authService.signinWithGithub(
+      profile,
+      deviceInfo,
+      ipAddress,
+    );
+    const { password, role, ...safeUser } = signedUser;
+    return renderAuthHomePage(safeUser, 'GitHub');
   }
 
   @Public()

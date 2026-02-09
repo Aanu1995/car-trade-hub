@@ -1,5 +1,5 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import type { Profile } from 'passport-google-oauth20';
+import type { Profile } from 'passport';
 import { User, UserWithTokenInfo } from 'src/users/entities/user.entity';
 
 export const CurrentUser = createParamDecorator(

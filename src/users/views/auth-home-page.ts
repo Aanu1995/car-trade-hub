@@ -6,7 +6,10 @@ const escapeHtml = (value: string): string =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-export const renderAuthHomePage = (data: unknown): string => {
+export const renderAuthHomePage = (
+  data: unknown,
+  providerLabel = 'Google',
+): string => {
   const prettyJson = JSON.stringify(data, null, 2);
   const safeJson = escapeHtml(prettyJson);
 
@@ -68,7 +71,7 @@ export const renderAuthHomePage = (data: unknown): string => {
   <body>
     <div class="card">
       <h1 class="title">Signed in</h1>
-      <p class="subtitle">Below is the data returned from Google sign-in.</p>
+      <p class="subtitle">Below is the data returned from ${providerLabel} sign-in.</p>
       <pre>${safeJson}</pre>
     </div>
   </body>
