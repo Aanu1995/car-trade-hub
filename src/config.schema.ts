@@ -26,6 +26,13 @@ export const configValidationSchema = Joi.object({
   GITHUB_CLIENT_SECRET: Joi.string().required(),
   GITHUB_CALLBACK_URL: Joi.string().required(),
 
+  // Apple OAuth configuration
+  APPLE_CLIENT_ID: Joi.string().required(),
+  APPLE_TEAM_ID: Joi.string().required(),
+  APPLE_KEY_ID: Joi.string().required(),
+  APPLE_CALLBACK_URL: Joi.string().required(),
+  APPLE_PRIVATE_KEY_LOCATION: Joi.string().required(),
+
   // Redis configuration
   REDIS_URL: Joi.string().required(),
 });

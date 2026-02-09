@@ -43,6 +43,7 @@ export const authLoginPageHtml = `<!DOCTYPE html>
         font-size: 14px;
       }
       .google-button,
+      .apple-button,
       .github-button {
         display: inline-flex;
         align-items: center;
@@ -63,12 +64,27 @@ export const authLoginPageHtml = `<!DOCTYPE html>
         background: #f9fafb;
         box-shadow: 0 6px 16px rgba(16, 24, 40, 0.08);
       }
+      .apple-button {
+        margin-top: 12px;
+        background: #111827;
+        color: #ffffff;
+        border-color: #111827;
+      }
+      .apple-button:hover {
+        background: #0b1220;
+        box-shadow: 0 6px 16px rgba(16, 24, 40, 0.12);
+      }
       .github-button {
         margin-top: 12px;
       }
       .google-icon {
         width: 20px;
         height: 20px;
+      }
+      .apple-icon {
+        width: 20px;
+        height: 20px;
+        fill: currentColor;
       }
       .footer {
         margin-top: 20px;
@@ -102,6 +118,17 @@ export const authLoginPageHtml = `<!DOCTYPE html>
           />
         </svg>
         Continue with Google
+      </a>
+      <a class="apple-button" href="/auth/apple">
+        <svg class="apple-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M16.6 13.2c0-1.8 1.5-2.7 1.6-2.8-.9-1.3-2.3-1.5-2.8-1.5-1.2-.1-2.3.7-2.9.7-.6 0-1.6-.7-2.6-.7-1.3 0-2.6.8-3.3 2-1.4 2.5-.3 6.2 1 8.2.6 1 1.4 2.2 2.4 2.2 1 0 1.3-.6 2.5-.6 1.2 0 1.5.6 2.5.6s1.7-1 2.4-2c.7-1 1-2 1-2.1 0 0-1.8-.7-1.8-3z"
+          />
+          <path
+            d="M14.8 5.7c.5-.6.8-1.4.7-2.2-.7 0-1.6.5-2.1 1.1-.5.5-.9 1.4-.8 2.2.8.1 1.6-.4 2.2-1.1z"
+          />
+        </svg>
+        Continue with Apple
       </a>
       <a class="github-button" href="/auth/github">
         <svg class="google-icon" viewBox="0 0 24 24" aria-hidden="true">

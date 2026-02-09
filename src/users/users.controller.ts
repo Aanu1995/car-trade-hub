@@ -35,10 +35,13 @@ import { JwtRefreshGuard } from 'src/guards/jwt-refresh.guard';
 import { UserAgent } from 'src/decorators/user-agent.decorator';
 import type { Profile as GoogleProfile } from 'passport-google-oauth20';
 import type { Profile as GithubProfile } from 'passport-github2';
+import type { Profile as AppleProfile } from 'passport-apple';
 import { GoogleAuthGuard } from 'src/guards/google-auth.guard';
 import { GithubAuthGuard } from 'src/guards/github-auth.guard';
+import { AppleAuthGuard } from 'src/guards/apple-auth.guard';
 import { authLoginPageHtml } from './views/auth-login-page';
 import { renderAuthHomePage } from './views/auth-home-page';
+import { AuthProvider } from './entities/user-identity.entity';
 
 @Controller('auth')
 @Timeout()
@@ -70,7 +73,7 @@ export class UsersController {
     @UserAgent() deviceInfo: string,
     @Ip() ipAddress: string,
   ): Promise<UserWithJwt> {
-    return this.authService.signin(
+    return this.authService.signinWithEmailAndPassword(
       body.email,
       body.password,
       deviceInfo,
@@ -100,7 +103,7 @@ export class UsersController {
       ipAddress,
     );
     const { password, role, ...safeUser } = signedUser;
-    return renderAuthHomePage(safeUser, 'Google');
+    return renderAuthHomePage(safeUser, AuthProvider.GOOGLE);
   }
 
   @Public()
@@ -125,7 +128,32 @@ export class UsersController {
       ipAddress,
     );
     const { password, role, ...safeUser } = signedUser;
-    return renderAuthHomePage(safeUser, 'GitHub');
+    return renderAuthHomePage(safeUser, AuthProvider.GITHUB);
+  }
+
+  @Public()
+  @UseGuards(AppleAuthGuard)
+  @Get('apple')
+  appleAuth(): void {
+    return;
+  }
+
+  @Public()
+  @UseGuards(AppleAuthGuard)
+  @Header('Content-Type', 'text/html')
+  @Get('apple/callback')
+  async appleAuthCallback(
+    @OAuthProfile() profile: AppleProfile,
+    @UserAgent() deviceInfo: string,
+    @Ip() ipAddress: string,
+  ): Promise<string> {
+    const signedUser = await this.authService.signinWithApple(
+      profile,
+      deviceInfo,
+      ipAddress,
+    );
+    const { password, role, ...safeUser } = signedUser;
+    return renderAuthHomePage(safeUser, AuthProvider.APPLE);
   }
 
   @Public()

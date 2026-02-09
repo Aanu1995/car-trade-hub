@@ -1,3 +1,5 @@
+import { AuthProvider } from '../entities/user-identity.entity';
+
 const escapeHtml = (value: string): string =>
   value
     .replace(/&/g, '&amp;')
@@ -8,7 +10,7 @@ const escapeHtml = (value: string): string =>
 
 export const renderAuthHomePage = (
   data: unknown,
-  providerLabel = 'Google',
+  providerLabel = AuthProvider.GOOGLE,
 ): string => {
   const prettyJson = JSON.stringify(data, null, 2);
   const safeJson = escapeHtml(prettyJson);
@@ -71,7 +73,7 @@ export const renderAuthHomePage = (
   <body>
     <div class="card">
       <h1 class="title">Signed in</h1>
-      <p class="subtitle">Below is the data returned from ${providerLabel} sign-in.</p>
+      <p class="subtitle">Below is the data returned from ${providerLabel.toUpperCase()} sign-in.</p>
       <pre>${safeJson}</pre>
     </div>
   </body>

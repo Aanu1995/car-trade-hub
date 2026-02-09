@@ -12,6 +12,7 @@ import { JwtDto } from './dtos/jwt-dto';
 import { TokenService } from './token.service';
 import { Profile as GoogleProfile } from 'passport-google-oauth20';
 import { Profile as GithubProfile } from 'passport-github2';
+import { Profile as AppleProfile } from 'passport-apple';
 import { AuthProvider } from './entities/user-identity.entity';
 
 @Injectable()
@@ -82,7 +83,7 @@ export class AuthService {
     return existingUser;
   }
 
-  async signin(
+  async signinWithEmailAndPassword(
     email: string,
     password: string,
     deviceInfo?: string,
@@ -250,6 +251,64 @@ export class AuthService {
     const signedUser = await this.issueJwtForUser(user, deviceInfo, ipAddress);
 
     this.logger.log(`GitHub sign-in successful for user ID: ${user.id}`);
+    return signedUser;
+  }
+
+  async signinWithApple(
+    profile: AppleProfile,
+    deviceInfo?: string,
+    ipAddress?: string,
+  ): Promise<UserWithJwt> {
+    const appleId = profile.id;
+    const email = profile.email?.toLowerCase();
+
+    if (!appleId || !email) {
+      this.logger.error('Apple sign-in failed - missing Apple ID or email');
+      throw new UnauthorizedException('Apple profile has no ID or email');
+    }
+
+    const maskedEmail = this.maskEmail(email);
+
+    this.logger.log(
+      `Apple sign-in attempt for ${maskedEmail} from IP: ${ipAddress || 'unknown'}`,
+    );
+
+    const existingIdentity =
+      await this.userService.findIdentityByProviderUserId(
+        AuthProvider.APPLE,
+        appleId,
+      );
+
+    let user: User | null = null;
+
+    if (existingIdentity) {
+      user = await this.userService.findOne(existingIdentity.userId);
+    } else {
+      user = await this.userService.findOneByEmail(email);
+
+      if (!user) {
+        user = await this.userService.createOAuthUser(email);
+      }
+
+      await this.userService.createIdentity({
+        userId: user.id,
+        provider: AuthProvider.APPLE,
+        providerUserId: appleId,
+        email,
+        emailVerified: true,
+      });
+    }
+
+    if (!user) {
+      this.logger.error(
+        `Apple sign-in failed - user not found for Apple ID: ${appleId}`,
+      );
+      throw new UnauthorizedException('User not found');
+    }
+
+    const signedUser = await this.issueJwtForUser(user, deviceInfo, ipAddress);
+
+    this.logger.log(`Apple sign-in successful for user ID: ${user.id}`);
     return signedUser;
   }
 

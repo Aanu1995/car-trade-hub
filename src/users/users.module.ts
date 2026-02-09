@@ -16,6 +16,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TokenService } from './token.service';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { GithubStrategy } from './strategies/github.strategy';
+import { AppleStrategy } from './strategies/apple.strategy';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { GithubStrategy } from './strategies/github.strategy';
     JwtRefreshStrategy,
     GoogleStrategy,
     GithubStrategy,
+    AppleStrategy,
     {
       provide: APP_GUARD,
       useClass: JwtGuard,
