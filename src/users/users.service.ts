@@ -16,7 +16,7 @@ export class UsersService {
 
   constructor(
     @InjectRepository(User)
-    private readonly repo: Repository<User>,
+    private readonly userRepo: Repository<User>,
     @InjectRepository(UserIdentity)
     private readonly identityRepo: Repository<UserIdentity>,
   ) {}
@@ -24,8 +24,8 @@ export class UsersService {
   async create(email: string, password: string): Promise<User> {
     this.logger.log(`Creating new user record`);
     try {
-      const user = this.repo.create({ email, password });
-      const savedUser = await this.repo.save(user);
+      const user = this.userRepo.create({ email, password });
+      const savedUser = await this.userRepo.save(user);
       this.logger.log(`User record created with ID: ${savedUser.id}`);
 
       return savedUser;
@@ -38,8 +38,8 @@ export class UsersService {
   async createOAuthUser(email: string): Promise<User> {
     this.logger.log(`Creating new OAuth user record`);
     try {
-      const user = this.repo.create({ email, password: null });
-      const savedUser = await this.repo.save(user);
+      const user = this.userRepo.create({ email, password: null });
+      const savedUser = await this.userRepo.save(user);
       this.logger.log(`OAuth user record created with ID: ${savedUser.id}`);
 
       return savedUser;
@@ -54,14 +54,14 @@ export class UsersService {
       throw new BadRequestException('User ID must be provided');
     }
 
-    return this.repo.findOneBy({ id });
+    return this.userRepo.findOneBy({ id });
   }
 
   findOneByEmail(
     email: string,
     options?: { withIdentities?: boolean },
   ): Promise<User | null> {
-    return this.repo.findOne({
+    return this.userRepo.findOne({
       where: { email },
       relations: { identities: options?.withIdentities ?? false },
     });
@@ -101,7 +101,7 @@ export class UsersService {
   }
 
   find(email: string): Promise<User[]> {
-    return this.repo.findBy({ email });
+    return this.userRepo.findBy({ email });
   }
 
   async update(id: number, attrs: Partial<User>): Promise<User> {
@@ -113,7 +113,7 @@ export class UsersService {
     }
 
     const newUser = Object.assign(user, attrs);
-    const updatedUser = await this.repo.save(newUser);
+    const updatedUser = await this.userRepo.save(newUser);
     this.logger.log(`User ID: ${id} updated successfully`);
     return updatedUser;
   }
@@ -126,7 +126,7 @@ export class UsersService {
       throw new NotFoundException(`User with id ${id} not found`);
     }
 
-    const removedUser = await this.repo.remove(user);
+    const removedUser = await this.userRepo.remove(user);
     this.logger.log(`User ID: ${id} removed successfully`);
 
     return removedUser;

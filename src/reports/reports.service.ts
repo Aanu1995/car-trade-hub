@@ -27,6 +27,7 @@ export class ReportsService {
   findByUserId(userid: number, limit: number = 10): Promise<Report[]> {
     return this.repo.find({
       where: { createdById: userid },
+      relations: { createdBy: true },
       order: { createdOn: 'DESC' },
       take: limit,
     });

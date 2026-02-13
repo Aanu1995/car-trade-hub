@@ -1,7 +1,5 @@
 import { Report } from 'src/reports/report.entity';
 import {
-  AfterInsert,
-  AfterUpdate,
   Column,
   CreateDateColumn,
   Entity,

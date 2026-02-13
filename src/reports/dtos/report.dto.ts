@@ -1,4 +1,5 @@
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
+import { UserDto } from 'src/users/dtos/user.dto';
 
 export class ReportDto {
   @Expose()
@@ -31,9 +32,9 @@ export class ReportDto {
   @Expose()
   createdById: number;
 
-  // @Expose()
-  // @Type(() => UserDto)
-  // createdBy: UserDto;
+  @Expose()
+  @Type(() => UserDto)
+  createdBy: UserDto;
 
   @Expose()
   createdOn: Date;
